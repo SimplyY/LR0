@@ -10,17 +10,18 @@
 <body>
     <div class="lr0">
         <p>请输入上下文无关文法：</p>
-        <textarea id="input-grammar" name="" rows="10" cols="40">E
-E->E+T
-E->T
-T->T*F
-T->F
-F->(E)
-F->i</textarea>
+        <textarea id="input-grammar" name="" rows="10" cols="30">E
+E->aA
+E->bB
+A->cA
+A->d
+B->cB
+B->d</textarea>
         <button type="button" onclick="praseGrammar()" name="点击">提交输入</button>
 
         <p>文法的所有项目dfa和LR0表为：</p>
-        <textarea id="dfa-output" name="" rows="23" cols="65"></textarea>
+        <textarea id="dfa-output" name="" rows="23" cols="30"></textarea>
+        <textarea name="name" rows="23" cols="55"></textarea>
     </div>
     <div class="lr0">
         <p>请输入句子：</p>

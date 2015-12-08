@@ -9,7 +9,7 @@ var LR0Items = {
 function initLR0Items(LR0Items, input_grammar) {
     LR0Items.productions = productions = input_grammar.split('\n');
 
-    LR0Items.aug_productions = [["'", LR0Items.productions[0]]];
+    LR0Items.aug_productions = [[LR0Items.productions[0] + "'", LR0Items.productions[0]]];
     var regex = /([A-Z])->(.*)/;
     for (var i = 1; i < LR0Items.productions.length; i++) {
         m = regex.exec(LR0Items.productions[i]);
@@ -25,7 +25,7 @@ function initLR0Items(LR0Items, input_grammar) {
         for (var i = 0; i < array.length; i++) {
             for (var j = 0; j < array[i][1].length; j++) {
                 var char = array[i][1].charAt(j);
-                if (char !== '@' && char !== "'" && symbols.indexOf(char) === -1) {
+                if (char !== '·' && char !== LR0Items.productions[0] + "'" && symbols.indexOf(char) === -1) {
                     symbols.push(char);
                 }
             }
@@ -49,13 +49,14 @@ function getAugmentedGrammar(LR0Items) {
 // The main function to calculate LR(0) items.
 function getItems(LR0Items) {
     var C = [];
-    C.push(getClosure(LR0Items, "'", "@" + LR0Items.productions[0]));
+    C.push(getClosure(LR0Items, LR0Items.productions[0] + "'", "·" + LR0Items.productions[0]));
 
     var added = true;
     while(added){
         added = false;
         for (var i = 0; i < C.length; i++) {
             var items = C[i];
+            C[i].goto = {};
             for (var j = 0; j < LR0Items.symbols.length; j++) {
                 var symbol = LR0Items.symbols[j];
                 goto_result = getGotoResult(LR0Items, items, symbol);
@@ -72,19 +73,22 @@ function getItems(LR0Items) {
 }
 
 function getDfaOutput(items) {
-    var dfaOutput = "\nSets of LR(0) Items\n-------------------" + '\n';
+    var dfaOutput = "Sets of LR(0) Items\n-------------------" + '\n';
     for (var i = 0; i < items.length; i++) {
+        var item = items[i];
         dfaOutput += 'I' + i.toString() +':\n';
         examinedGotoSymbols = [];
         for (var j = 0; j < items[i].length; j++) {
-            var item = items[i][j];
-            var itemString = item[0] + '->' + item[1];
+            var line = items[i][j];
+            var itemString = line[0] + '->' + line[1];
 
-            var gotoSymbol = dotBeforeSymbol(item[1], false);
+            var gotoSymbol = dotBeforeSymbol(line[1], false);
             if (gotoSymbol && isInArray(gotoSymbol, examinedGotoSymbols) === false) {
                 examinedGotoSymbols.push(gotoSymbol);
-                var gotoState = getGotoState(items, rhsWithSymbol(item[1]));
+                var gotoState = getGotoState(items, rhsWithSymbol(line[1]));
                 dfaOutput += '   ' + itemString + '\t\t' + 'goto(' + gotoSymbol + ')=I' + gotoState + '\n';
+
+                item.goto[gotoSymbol] = gotoState;
             } else {
                 dfaOutput += '   ' +  itemString + '\n';
             }
@@ -92,6 +96,60 @@ function getDfaOutput(items) {
         dfaOutput += '\n';
     }
     return dfaOutput;
+}
+
+function getLrPraseTable(items) {
+    function Action(value, isState, isProduction) {
+        this.value = value;
+        this.isState = isState;
+        this.isProduction = isProduction;
+    }
+
+    var lrPraseTable = [];
+    var symbols = LR0Items.symbols;
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        for (var j = 0; j < symbols.length; j++) {
+            var symbol = symbols[j];
+            lrPraseTable.push({});
+
+            if (/[a-z]/.test(symbol)) {
+                lrPraseTable[i][symbol] = getAction(item, symbol);
+            }
+            if (/[A-Z]/.test(symbol)) {
+                lrPraseTable[i][symbol] = getGOTOState(item, symbol);
+            }
+        }
+        lrPraseTable[1]['#'] = 'acc';
+    }
+    return lrPraseTable;
+
+    function getAction(item, symbol) {
+        var action, value;
+        // 当 item 没有 goto 一个的 state，此 item 就规约 item，此时 item.goto 为空对象
+        if (JSON.stringify(item.goto) === JSON.stringify({})) {
+            // 得到规约 item 的 Action,即规约的产生式序号
+            for (var i = 0; i < LR0Items.aug_productions.length; i++) {
+                var production = LR0Items.aug_productions[i];
+                if (JSON.stringify(item[0]).split('·')[0] === JSON.stringify(production)) {
+                    value = i;
+                }
+            }
+            action = new Action(value, false, true);
+            return action;
+        } else {
+            // 否则为item 的Action状态
+            var state = item.goto[symbol];
+
+            action = new Action(state, true, false);
+            return action;
+        }
+    }
+
+    function getGOTOState(item, symbol) {
+        var state = item.goto[symbol];
+        return state;
+    }
 }
 
 // Returns the closure of a production as a list of tuples
@@ -110,7 +168,7 @@ function getClosure(LR0Items, LHS, RHS) {
                 for (var j = 1; j < LR0Items.aug_productions.length; j++) {
                     var prod = LR0Items.aug_productions[j];
                     if (prod[0] === nextClosureChar) {
-                        var newProd = [prod[0], '@' + prod[1]];
+                        var newProd = [prod[0], '·' + prod[1]];
                         J.push(newProd);
                         added = true;
                     }
@@ -136,9 +194,9 @@ function getGotoResult(LR0Items, set_of_items, symbol) {
     var gotoResult = [];
     for (var i = 0; i < set_of_items.length; i++) {
         var item = set_of_items[i];
-        var symbolStr = '@' + symbol;
+        var symbolStr = '·' + symbol;
         if (item[1].indexOf(symbolStr) !== -1) {
-            newRHS = item[1].replace('@' + symbol, symbol + '@');
+            newRHS = item[1].replace('·' + symbol, symbol + '·');
             res = getClosure(LR0Items, item[0], newRHS);
             for (var j = 0; j < res.length; j++) {
                 var r = res[j];
@@ -156,13 +214,13 @@ function getGotoResult(LR0Items, set_of_items, symbol) {
 }
 
 
-// Returns a symbol that is preceeded by an '@', or false if no such symbol exists
+// Returns a symbol that is preceeded by an '·', or false if no such symbol exists
 function dotBeforeSymbol(RHS, nonTerminal) {
     var regex;
     if (nonTerminal) {
-        regex =/@([A-Z])/;
+        regex =/·([A-Z])/;
     } else {
-        regex = /@(.)/;
+        regex = /·(.)/;
     }
     var result = regex.exec(RHS);
     if (!result) {
@@ -179,7 +237,7 @@ function getGotoState(data, rhs) {
     }
 
     var symbol = dotBeforeSymbol(rhs, false);
-    var gotoString = rhs.replace('@' + symbol, symbol + '@');
+    var gotoString = rhs.replace('·' + symbol, symbol + '·');
     for (var i = 0; i < data.length; i++) {
         for (var j = 0; j < data[i].length; j++) {
             var item = data[i][j];
@@ -190,10 +248,10 @@ function getGotoState(data, rhs) {
     }
 }
 
-// Returns the entire right hand side of a production that contains an '@'
-// but only if the '@' is not the last character.
+// Returns the entire right hand side of a production that contains an '·'
+// but only if the '·' is not the last character.
 function rhsWithSymbol(RHS) {
-    var result = /.*@.+/.exec(RHS);
+    var result = /.*·.+/.exec(RHS);
     if (!result) {
         return undefined;
     } else {
