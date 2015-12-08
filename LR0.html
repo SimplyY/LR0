@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>LR0</title>
+    <link rel="stylesheet" href="LR0.css">
+</head>
+
+<body>
+    <div class="lr0">
+        <p>请输入上下文无关文法：</p>
+        <textarea id="input-grammar" name="" rows="10" cols="40">E
+E->E+T
+E->T
+T->T*F
+T->F
+F->(E)
+F->i</textarea>
+        <button type="button" onclick="praseGrammar()" name="点击">提交输入</button>
+
+        <p>文法的所有项目dfa和LR0表为：</p>
+        <textarea id="dfa-output" name="" rows="23" cols="65"></textarea>
+    </div>
+    <div class="lr0">
+        <p>请输入句子：</p>
+        <input type="text" name="" value="">
+        <button type="button" name="点击">提交输入</button>
+
+        <p>分析过程为：</p>
+        <textarea name="" rows="30" cols="80"></textarea>
+    </div>
+    <script src="LR0.js" charset="utf-8"></script>
+    <script src="controller.js" charset="utf-8"></script>
+</body>
+
+</html>
