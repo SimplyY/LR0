@@ -86,8 +86,8 @@ function getDfaOutput(items) {
             var gotoSymbol = dotBeforeSymbol(line[1], false);
             if (gotoSymbol && isInArray(gotoSymbol, examinedGotoSymbols) === false) {
                 examinedGotoSymbols.push(gotoSymbol);
-                var gotoState = getGotoState(items, rhsWithSymbol(line[1]));
-                dfaOutput += '   ' + itemString + '\t\t' + 'goto(' + gotoSymbol + ')=I' + gotoState + '\n';
+                var gotoState = getGotoState(items, rhsWithSymbol(line[1]), i, j);
+                dfaOutput += '   ' + itemString + '\t' + 'goto(' + gotoSymbol + ')=I' + gotoState + '\n';
 
                 item.goto[gotoSymbol] = gotoState;
             } else {
@@ -124,9 +124,7 @@ function getLrPraseTable(items) {
 
     setEndAction(lrPraseTable, symbols);
 
-
-    var lrPraseTableString = formatLrPraseTable(lrPraseTable);
-    return lrPraseTableString;
+    return lrPraseTable;
 
     function getAction(item, symbol) {
         var action, value;
@@ -167,93 +165,93 @@ function getLrPraseTable(items) {
                 }
             }
         }
-        lrPraseTable[1]['#'] = 'ac';
+        lrPraseTable[1]['#'] = 'acc';
+    }
+}
+
+function formatLrPraseTable(lrPraseTable) {
+    String.prototype.repeat = function(num){//创建repeat方法
+        return new Array(num + 1).join(this);//创建个数为重复次数+1的数组，用字符串自身做为分隔符连接起来
+    };
+    var symbols = LR0Items.symbols;
+
+    var lrPraseTableString = '状态\t\tACTION\t\t\t\tGOTO\n';
+    lrPraseTableString += drawLine();
+
+    // draw colomnAttribute
+    lrPraseTableString += '\t' + drawIntervalLine();
+    for (var i = 0; i < symbols.length; i++) {
+        if (/[a-z]/.test(symbols[i])) {
+            lrPraseTableString += symbols[i] + ' ' + drawIntervalLine();
+        }
+    }
+    lrPraseTableString += '# ' + drawIntervalLine();
+    for (i = 0; i < symbols.length; i++) {
+        if (/[A-Z]/.test(symbols[i])) {
+            lrPraseTableString += symbols[i] + ' ' +  drawIntervalLine();
+        }
+    }
+    lrPraseTableString += '\n' + drawLine();
+
+    // draw table value
+    for (i = 0; i < lrPraseTable.length; i++) {
+        var item = lrPraseTable[i];
+        lrPraseTableString += 'I' + i;
+        lrPraseTableString += '\t' + drawIntervalLine();
+
+        for (var j = 0; j < symbols.length; j++) {
+            if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]) {
+                if (lrPraseTable[i][symbols[j]].isState === true) {
+                    lrPraseTableString += 's';
+                }
+                if (lrPraseTable[i][symbols[j]].isProduction === true) {
+                    lrPraseTableString += 'r';
+                }
+                lrPraseTableString += lrPraseTable[i][symbols[j]].value;
+                lrPraseTableString += drawIntervalLine();
+            }
+
+            if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
+                lrPraseTableString += drawBlank();
+            }
+        }
+        if (lrPraseTable[i]['#'] === undefined) {
+            lrPraseTableString += drawBlank();
+        } else if (lrPraseTable[i]['#'] === 'acc') {
+            lrPraseTableString += 'acc' + drawIntervalLine().slice(1);
+        } else if (lrPraseTable[i]['#'].isProduction === true ) {
+            lrPraseTableString += 'r' + lrPraseTable[i]['#'].value + drawIntervalLine();
+        }
+
+
+        for (j = 0; j < symbols.length; j++) {
+            if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]){
+                if (lrPraseTable[i][symbols[j]] < 10) {
+                    lrPraseTableString += lrPraseTable[i][symbols[j]] + ' ';
+                } else {
+                    lrPraseTableString += lrPraseTable[i][symbols[j]];
+                }
+                lrPraseTableString += drawIntervalLine();
+            }
+            if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
+                lrPraseTableString += '  ';
+                lrPraseTableString += drawIntervalLine();
+            }
+        }
+
+        lrPraseTableString += '\n';
     }
 
-    function formatLrPraseTable(lrPraseTable) {
-        String.prototype.repeat = function(num){//创建repeat方法
-            return new Array(num + 1).join(this);//创建个数为重复次数+1的数组，用字符串自身做为分隔符连接起来
-        };
-        var symbols = LR0Items.symbols;
+    return lrPraseTableString;
 
-        var lrPraseTableString = '状态\t\tACTION\t\t\t\tGOTO\n';
-        lrPraseTableString += drawLine();
-
-        // draw colomnAttribute
-        lrPraseTableString += '\t' + drawIntervalLine();
-        for (var i = 0; i < symbols.length; i++) {
-            if (/[a-z]/.test(symbols[i])) {
-                lrPraseTableString += symbols[i] + ' ' + drawIntervalLine();
-            }
-        }
-        lrPraseTableString += '# ' + drawIntervalLine();
-        for (i = 0; i < symbols.length; i++) {
-            if (/[A-Z]/.test(symbols[i])) {
-                lrPraseTableString += symbols[i] + ' ' +  drawIntervalLine();
-            }
-        }
-        lrPraseTableString += '\n' + drawLine();
-
-        // draw table value
-        for (i = 0; i < lrPraseTable.length; i++) {
-            var item = lrPraseTable[i];
-            lrPraseTableString += 'I' + i;
-            lrPraseTableString += '\t' + drawIntervalLine();
-
-            for (var j = 0; j < symbols.length; j++) {
-                if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]) {
-                    if (lrPraseTable[i][symbols[j]].isState === true) {
-                        lrPraseTableString += 's';
-                    }
-                    if (lrPraseTable[i][symbols[j]].isProduction === true) {
-                        lrPraseTableString += 'r';
-                    }
-                    lrPraseTableString += lrPraseTable[i][symbols[j]].value;
-                    lrPraseTableString += drawIntervalLine();
-                }
-
-                if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
-                    lrPraseTableString += drawBlank();
-                }
-            }
-            if (lrPraseTable[i]['#'] === undefined) {
-                lrPraseTableString += drawBlank();
-            } else if (lrPraseTable[i]['#'] === 'ac') {
-                lrPraseTableString += 'ac' + drawIntervalLine();
-            } else if (lrPraseTable[i]['#'].isProduction === true ) {
-                lrPraseTableString += 'r' + lrPraseTable[i]['#'].value + drawIntervalLine();
-            }
-
-
-            for (j = 0; j < symbols.length; j++) {
-                if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]){
-                    if (lrPraseTable[i][symbols[j]] < 10) {
-                        lrPraseTableString += lrPraseTable[i][symbols[j]] + ' ';
-                    } else {
-                        lrPraseTableString += lrPraseTable[i][symbols[j]];
-                    }
-                    lrPraseTableString += drawIntervalLine();
-                }
-                if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
-                    lrPraseTableString += '  ';
-                    lrPraseTableString += drawIntervalLine();
-                }
-            }
-
-            lrPraseTableString += '\n';
-        }
-
-        return lrPraseTableString;
-
-        function drawLine() {
-            return '-'.repeat(70) + '\n';
-        }
-        function drawIntervalLine() {
-            return '  |  ';
-        }
-        function drawBlank() {
-            return '  ' + drawIntervalLine();
-        }
+    function drawLine() {
+        return '-'.repeat(70) + '\n';
+    }
+    function drawIntervalLine() {
+        return '  |  ';
+    }
+    function drawBlank() {
+        return '  ' + drawIntervalLine();
     }
 }
 
@@ -335,7 +333,7 @@ function dotBeforeSymbol(RHS, nonTerminal) {
 }
 
 // Returns the state to goto for the right-hand side rhs.
-function getGotoState(data, rhs) {
+function getGotoState(data, rhs, oldIndexI, oldIndexJ) {
     if (!rhs) {
         return;
     }
@@ -345,7 +343,7 @@ function getGotoState(data, rhs) {
     for (var i = 0; i < data.length; i++) {
         for (var j = 0; j < data[i].length; j++) {
             var item = data[i][j];
-            if (item[1] === gotoString) {
+            if (item[1] === gotoString && item[0] === data[oldIndexI][oldIndexJ][0]) {
                 return i;
             }
         }
