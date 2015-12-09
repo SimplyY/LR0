@@ -6,11 +6,21 @@ function praseGrammar() {
     var resultItems = getItems(LR0Items);
     var dfaOutput = getDfaOutput(resultItems);
     var lrPraseTable = getLrPraseTable(resultItems);
-    console.log(lrPraseTable);
 
-    var dfaOutputDom = document.getElementById('dfa-output');
-    dfaOutputDom.value = dfaOutput;
+    showDfa(dfaOutput);
+    showLrPraseTable(lrPraseTable);
+
+    function showDfa(dfaOutput) {
+        var dfaOutputDom = document.getElementById('dfa-output');
+        dfaOutputDom.value = dfaOutput;
+    }
+
+    function showLrPraseTable(lrPraseTable) {
+        var lrPraseTableDom = document.getElementById('lrPraseTable');
+        lrPraseTableDom.value = lrPraseTable;
+    }
 }
+
 
 function alertSentenceError() {
     alert(' 句子输入错误，请重新输入 ');

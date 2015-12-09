@@ -3,7 +3,10 @@ body{
     width: 95%;
 }
 
+textarea{
+    font-family: "courier new";
+}
 .lr0{
     float: left;
-    width: 50%;
+    width: 57%;
 }

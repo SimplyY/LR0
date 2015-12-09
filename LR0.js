@@ -17,6 +17,7 @@ function initLR0Items(LR0Items, input_grammar) {
     }
 
     LR0Items.symbols = createListOfSymbols();
+    LR0Items.symbols.sort();
 
     // Returns a list of symbols in the grammar, e.g. ['E','B','a']
     function createListOfSymbols() {
@@ -109,10 +110,9 @@ function getLrPraseTable(items) {
     var symbols = LR0Items.symbols;
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
+        lrPraseTable.push({});
         for (var j = 0; j < symbols.length; j++) {
             var symbol = symbols[j];
-            lrPraseTable.push({});
-
             if (/[a-z]/.test(symbol)) {
                 lrPraseTable[i][symbol] = getAction(item, symbol);
             }
@@ -120,9 +120,13 @@ function getLrPraseTable(items) {
                 lrPraseTable[i][symbol] = getGOTOState(item, symbol);
             }
         }
-        lrPraseTable[1]['#'] = 'acc';
     }
-    return lrPraseTable;
+
+    setEndAction(lrPraseTable, symbols);
+
+
+    var lrPraseTableString = formatLrPraseTable(lrPraseTable);
+    return lrPraseTableString;
 
     function getAction(item, symbol) {
         var action, value;
@@ -131,17 +135,20 @@ function getLrPraseTable(items) {
             // 得到规约 item 的 Action,即规约的产生式序号
             for (var i = 0; i < LR0Items.aug_productions.length; i++) {
                 var production = LR0Items.aug_productions[i];
-                if (JSON.stringify(item[0]).split('·')[0] === JSON.stringify(production)) {
+                if (item[0].toString().split('·')[0] === production.toString()) {
                     value = i;
                 }
             }
-            action = new Action(value, false, true);
+            if (value) {
+                action = new Action(value, false, true);
+            }
             return action;
         } else {
             // 否则为item 的Action状态
             var state = item.goto[symbol];
-
-            action = new Action(state, true, false);
+            if (state) {
+                action = new Action(state, true, false);
+            }
             return action;
         }
     }
@@ -149,6 +156,104 @@ function getLrPraseTable(items) {
     function getGOTOState(item, symbol) {
         var state = item.goto[symbol];
         return state;
+    }
+
+    function setEndAction(lrPraseTable, symbols) {
+        for (var i = 0; i < lrPraseTable.length; i++) {
+            for (var j = 0; j < symbols.length; j++) {
+                var symbol = symbols[j];
+                if (/[a-z]/.test(symbol) && lrPraseTable[i][symbol] && lrPraseTable[i][symbol].isProduction) {
+                    lrPraseTable[i]['#'] = lrPraseTable[i][symbol];
+                }
+            }
+        }
+        lrPraseTable[1]['#'] = 'ac';
+    }
+
+    function formatLrPraseTable(lrPraseTable) {
+        String.prototype.repeat = function(num){//创建repeat方法
+            return new Array(num + 1).join(this);//创建个数为重复次数+1的数组，用字符串自身做为分隔符连接起来
+        };
+        var symbols = LR0Items.symbols;
+
+        var lrPraseTableString = '状态\t\tACTION\t\t\t\tGOTO\n';
+        lrPraseTableString += drawLine();
+
+        // draw colomnAttribute
+        lrPraseTableString += '\t' + drawIntervalLine();
+        for (var i = 0; i < symbols.length; i++) {
+            if (/[a-z]/.test(symbols[i])) {
+                lrPraseTableString += symbols[i] + ' ' + drawIntervalLine();
+            }
+        }
+        lrPraseTableString += '# ' + drawIntervalLine();
+        for (i = 0; i < symbols.length; i++) {
+            if (/[A-Z]/.test(symbols[i])) {
+                lrPraseTableString += symbols[i] + ' ' +  drawIntervalLine();
+            }
+        }
+        lrPraseTableString += '\n' + drawLine();
+
+        // draw table value
+        for (i = 0; i < lrPraseTable.length; i++) {
+            var item = lrPraseTable[i];
+            lrPraseTableString += 'I' + i;
+            lrPraseTableString += '\t' + drawIntervalLine();
+
+            for (var j = 0; j < symbols.length; j++) {
+                if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]) {
+                    if (lrPraseTable[i][symbols[j]].isState === true) {
+                        lrPraseTableString += 's';
+                    }
+                    if (lrPraseTable[i][symbols[j]].isProduction === true) {
+                        lrPraseTableString += 'r';
+                    }
+                    lrPraseTableString += lrPraseTable[i][symbols[j]].value;
+                    lrPraseTableString += drawIntervalLine();
+                }
+
+                if (/[a-z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
+                    lrPraseTableString += drawBlank();
+                }
+            }
+            if (lrPraseTable[i]['#'] === undefined) {
+                lrPraseTableString += drawBlank();
+            } else if (lrPraseTable[i]['#'] === 'ac') {
+                lrPraseTableString += 'ac' + drawIntervalLine();
+            } else if (lrPraseTable[i]['#'].isProduction === true ) {
+                lrPraseTableString += 'r' + lrPraseTable[i]['#'].value + drawIntervalLine();
+            }
+
+
+            for (j = 0; j < symbols.length; j++) {
+                if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]]){
+                    if (lrPraseTable[i][symbols[j]] < 10) {
+                        lrPraseTableString += lrPraseTable[i][symbols[j]] + ' ';
+                    } else {
+                        lrPraseTableString += lrPraseTable[i][symbols[j]];
+                    }
+                    lrPraseTableString += drawIntervalLine();
+                }
+                if (/[A-Z]/.test(symbols[j]) && lrPraseTable[i][symbols[j]] === undefined) {
+                    lrPraseTableString += '  ';
+                    lrPraseTableString += drawIntervalLine();
+                }
+            }
+
+            lrPraseTableString += '\n';
+        }
+
+        return lrPraseTableString;
+
+        function drawLine() {
+            return '-'.repeat(70) + '\n';
+        }
+        function drawIntervalLine() {
+            return '  |  ';
+        }
+        function drawBlank() {
+            return '  ' + drawIntervalLine();
+        }
     }
 }
 
@@ -200,7 +305,7 @@ function getGotoResult(LR0Items, set_of_items, symbol) {
             res = getClosure(LR0Items, item[0], newRHS);
             for (var j = 0; j < res.length; j++) {
                 var r = res[j];
-//              r isIn gotoResult
+                // r isIn gotoResult
                 if (isInArray(r, gotoResult) === false) {
                     gotoResult.push(r);
                 }
@@ -212,7 +317,6 @@ function getGotoResult(LR0Items, set_of_items, symbol) {
     }
     return gotoResult;
 }
-
 
 // Returns a symbol that is preceeded by an '·', or false if no such symbol exists
 function dotBeforeSymbol(RHS, nonTerminal) {
